@@ -21,9 +21,15 @@ transition: slide-left
 # enable MDC Syntax: https://sli.dev/features/mdc
 mdc: true
 ---
+
 # Fullstack OpenAPI
 
 ## End-to-end-to-end type-safety for API
+
 ---
 src: ./pages/01-why-schema.md
+---
+
+---
+src: ./pages/02-what-about-api.md
 ---
