@@ -17,7 +17,7 @@ class: text-center
 drawings:
   persist: false
 # slide transition: https://sli.dev/guide/animations.html#slide-transitions
-transition: slide-left
+transition: fade-out
 # enable MDC Syntax: https://sli.dev/features/mdc
 mdc: true
 lineNumbers: true
@@ -424,5 +424,84 @@ Clear error message!
 
 </v-click>
 
+---
+
+# Reducing boilerplate with NestJS CLI Plugin
+
+https://docs.nestjs.com/openapi/cli-plugin
 
 
+<v-click>
+
+The Swagger plugin will automatically:
+
+<v-clicks at=2>
+
+- annotate all DTO properties with `@ApiProperty` unless `@ApiHideProperty` is used
+- set the required property depending on the question mark 
+  - e.g. `name?: string` will set `required: false`
+- set the `type` or `enum` property depending on the type (supports arrays as well)
+- set the `default` property based on the assigned default value
+- set several validation rules based on `class-validator` decorators (if `classValidatorShim` set to true)
+- add a response decorator to every endpoint with a proper `status` and `type` (response model)
+- generate descriptions for properties and endpoints based on comments (if `introspectComments` set to true)
+- generate example values for properties based on comments (if `introspectComments` set to true)
+
+</v-clicks>
+
+</v-click>
+
+---
+
+# Reducing boilerplate with NestJS CLI Plugin
+
+````md magic-move
+```ts
+// animal.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
+
+class CreateAnimalDto {
+  @ApiProperty({ description: 'The name of the animal' })
+  @IsString()
+  name: string;
+}
+```
+```ts
+// animal.dto.ts
+class CreateAnimalDto {
+  /** The name of the animal */
+  name: string;
+}
+```
+````
+
+````md magic-move
+```ts
+// animal.controller.ts
+@Controller('animal')
+export class AnimalController {
+  @Post()
+  @ApiResponse({
+    status: 201,
+    description: 'Success',
+    type: Animal,
+  })
+  @ApiOperation({ summary: "Create an animal" })
+  create(@Body() createAnimalDto: CreateAnimalDto): Promise<Animal> {
+    return this.animalService.create(createAnimalDto);
+  }
+}
+```
+```ts
+// animal.controller.ts
+@Controller('animal')
+export class AnimalController {
+  /** Create an animal */
+  @Post()
+  create(@Body() createAnimalDto: CreateAnimalDto): Promise<Animal> {
+    return this.animalService.create(createAnimalDto);
+  }
+}
+```
+````
