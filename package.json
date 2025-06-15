@@ -5,6 +5,7 @@
   "scripts": {
     "build": "slidev build",
     "dev": "slidev",
+    "dev:remote": "slidev --remote",
     "export": "slidev export"
   },
   "dependencies": {

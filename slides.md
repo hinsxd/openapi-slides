@@ -20,6 +20,7 @@ drawings:
 transition: slide-left
 # enable MDC Syntax: https://sli.dev/features/mdc
 mdc: true
+lineNumbers: true
 ---
 
 # Fullstack OpenAPI
@@ -189,6 +190,239 @@ class: flex flex-col items-center justify-center
 NestJS Demo
 </div>
 
+---
+
+# NestJS Demo
+
+<div class="grid grid-cols-2 gap-4">
+
+````md magic-move
+```ts 
+// animal.dto.ts
+class CreateAnimalDto {
+  name: string;
+}
+
+
+// animal.entity.ts
+class Animal {
+  id: number;
+  name: string;
+}
+
+```
+
+```ts {2,5,10,13,16}
+// animal.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+
+class CreateAnimalDto {
+  @ApiProperty()
+  name: string;
+}
+
+// animal.entity.ts
+import { ApiProperty } from '@nestjs/swagger';
+
+class Animal {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  name: string;
+}
+```
+
+````
+
+````md magic-move {wrap:true,at:1}
+```ts 
+// animal.controller.ts
+@Controller('animal')
+export class AnimalController {
+  @Post()
+  create(@Body() createAnimalDto: CreateAnimalDto) {
+    return this.animalService.create(createAnimalDto);
+  }
+}
+```
+
+```ts {5-9,12}
+// animal.controller.ts
+@Controller('animal')
+export class AnimalController {
+  @Post()
+  @ApiResponse({
+    status: 201,
+    description: 'Success',
+    type: Animal,
+  })
+  create(
+    @Body() createAnimalDto: CreateAnimalDto,
+  ): Promise<Animal> {
+    return this.animalService.create(createAnimalDto);
+  }
+}
+```
+````
+</div>
 
 ---
+
+# Generated OpenAPI Schema
+
+```json {all|8-17|18-29|13,24|53-63|64-82}{maxHeight:'450px'}
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/animal": {
+      "post": {
+        "operationId": "AnimalController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnimalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The record has been successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Animal"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Animal"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Nestjs OpenAPI example",
+    "description": "The Nestjs OpenAPI example",
+    "version": "1.0",
+    "contact": {
+
+    }
+  },
+  "tags": [
+    {
+      "name": "Nestjs OpenAPI",
+      "description": ""
+    }
+  ],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "CreateAnimalDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "Animal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "The id of the animal",
+            "example": "1"
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the animal",
+            "example": "Dog"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    }
+  }
+}
+```
+
+---
+
+# Request Body Validation
+
+https://docs.nestjs.com/techniques/validation
+
+## Global Validation
+
+<div class="grid grid-cols-2 gap-4">
+
+````md magic-move
+```ts
+const app = await NestFactory.create(AppModule);
+await app.listen(3000);
+```
+```ts {1,4}
+import { ValidationPipe } from '@nestjs/common';
+
+const app = await NestFactory.create(AppModule);
+app.useGlobalPipes(new ValidationPipe());
+await app.listen(3000);
+```
+````
+
+````md magic-move {at:1}
+```ts
+// animal.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+
+class CreateAnimalDto {
+  @ApiProperty()
+  name: string;
+}
+```
+```ts {3,7}
+// animal.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
+
+class CreateAnimalDto {
+  @ApiProperty()
+  @IsString()
+  name: string;
+}
+```
+````
+
+</div>
+
+## Result
+````md magic-move
+```bash
+➜ curl -X POST 'http://localhost:3000/animal' -d '{ "name": 1 }'
+```
+```bash
+➜ curl -X POST 'http://localhost:3000/animal' -d '{ "name": 1 }'
+{"message":["name must be a string"],"error":"Bad Request","statusCode":400}
+```
+````
+
+<v-click>
+Clear error message!
+
+</v-click>
+
+
 
