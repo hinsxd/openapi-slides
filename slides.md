@@ -374,11 +374,13 @@ https://docs.nestjs.com/techniques/validation
 const app = await NestFactory.create(AppModule);
 await app.listen(3000);
 ```
-```ts {1,4}
+```ts {1,4-6}
 import { ValidationPipe } from '@nestjs/common';
 
 const app = await NestFactory.create(AppModule);
-app.useGlobalPipes(new ValidationPipe());
+app.useGlobalPipes(new ValidationPipe({
+  whitelist: true, // remove extra properties
+}));
 await app.listen(3000);
 ```
 ````
@@ -408,6 +410,8 @@ class CreateAnimalDto {
 
 </div>
 
+<v-click>
+
 ## Result
 ````md magic-move
 ```bash
@@ -418,6 +422,8 @@ class CreateAnimalDto {
 {"message":["name must be a string"],"error":"Bad Request","statusCode":400}
 ```
 ````
+
+</v-click>
 
 <v-click>
 Clear error message!
@@ -505,3 +511,726 @@ export class AnimalController {
 }
 ```
 ````
+
+---
+layout: image
+image: https://fastify.dev/img/logos/fastify-white.svg
+backgroundSize: 50%
+---
+
+---
+
+# Fastify
+
+Let's start with a basic Fastify server
+
+<div class="grid grid-cols-2 gap-4">
+
+<!-- Left -->
+````md magic-move
+```ts
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post(
+  '/animal',
+  (req, res) => {
+    res.send('Hello World');
+  }
+);
+
+fastify.listen({ port: 3000 }, (err, address) => {})
+```
+```ts {6}
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post<{
+  Body: CreateAnimalDto
+}>(
+  '/animal',
+  (req, res) => {
+    res.send('Hello World');
+  }
+);
+
+fastify.listen({ port: 3000 }, (err, address) => {})
+```
+```ts {7-9}
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post<{
+  Body: CreateAnimalDto,
+  Reply: {
+    201: Animal
+  }
+}>(
+  '/animal',
+  (req, res) => {
+    res.status(201).send({ id: 1, name: req.body.name });
+  }
+);
+
+fastify.listen({ port: 3000 }, (err, address) => {})
+```
+```ts {9-11}
+fastify.post<{
+  Body: CreateAnimalDto,
+  Reply: {
+    201: Animal
+  }
+}>(
+  '/animal',
+  {
+    schema: {
+      body: createAnimalDtoSchema,
+    }
+  },
+  (req, res) => {
+    res.status(201).send({ id: 1, name: req.body.name });
+  }
+);
+```
+```ts {11-13}
+fastify.post<{
+  Body: CreateAnimalDto,
+  Reply: {
+    201: Animal
+  }
+}>(
+  '/animal',
+  {
+    schema: {
+      body: createAnimalDtoSchema,
+      reply: {
+        201: animalSchema,
+      }
+    }
+  },
+  (req, res) => {
+    res.status(201).send({ id: 1, name: req.body.name });
+  }
+);
+```
+````
+
+<div>
+
+<!-- Right -->
+````md magic-move {at:1}
+```ts
+// types.ts
+```
+```ts {2-4}
+// types.ts
+type CreateAnimalDto = {
+  name: string;
+}
+```
+```ts {6-8}
+// types.ts
+type CreateAnimalDto = {
+  name: string;
+}
+
+type Animal = {
+  id: number;
+  name: string;
+}
+```
+```ts
+// schemas.ts
+const createAnimalDtoSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+  },
+  required: ['name'],
+}
+```
+```ts {10-17}
+// schemas.ts
+const createAnimalDtoSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+  },
+  required: ['name'],
+}
+
+const animalSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'number' },
+    name: { type: 'string' },
+  },
+  required: ['id', 'name'],
+}
+```
+````
+<v-click>
+
+<div class="flex items-center justify-center">
+  <div class="text-4xl">👆</div> Where should this come from?
+</div>
+
+</v-click>
+</div>
+
+</div>
+
+---
+
+# If we look closer
+
+<div class="grid grid-cols-2 gap-4">
+
+<v-switch>
+<template #1 transition="fade">
+
+```ts
+type CreateAnimalDto = {
+  name: string;
+}
+type Animal = {
+  id: number;
+  name: string;
+}
+const createAnimalDtoSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+  },
+  required: ['name'],
+}
+const animalSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'number' },
+    name: { type: 'string' },
+  },
+  required: ['id', 'name'],
+}
+```
+</template>
+
+<template #2>
+
+```ts {2-5,9-14}
+fastify.post<{
+  Body: CreateAnimalDto,
+  Reply: {
+    201: Animal
+  }
+}>(
+  '/animal',
+  {
+    schema: {
+      body: createAnimalDtoSchema,
+      reply: {
+        201: animalSchema,
+      }
+    }
+  },
+  (req, res) => {
+    res.send('Hello World');
+  }
+);
+```
+</template>
+</v-switch>
+
+<v-clicks at="1">
+
+- Can we infer the types from schemas?
+- Can we infer the fastify schema from schemas?
+
+</v-clicks>
+
+</div>
+
+---
+layout: cover
+---
+
+# Yes! 🎉
+
+---
+
+# Type Providers
+
+````md magic-move
+```ts
+const fastify = Fastify()
+
+fastify.post<{
+  Body: CreateAnimalDto,
+  Reply: {
+    201: Animal
+  }
+}>(
+  '/animal',
+  {
+    schema: {
+      body: createAnimalDtoSchema,
+      reply: {
+        201: animalSchema,
+      }
+    }
+  },
+  (req, res) => {
+    res.status(201).send({ id: 1, name: req.body.name });
+  }
+);
+```
+```ts {1-2|7-12|15-18}
+import type { JsonSchemaToTsProvider } from "@fastify/type-provider-json-schema-to-ts";
+const fastify = Fastify().withTypeProvider<JsonSchemaToTsProvider>()
+
+fastify.post(
+  '/animal',
+  {
+    schema: {
+      body: createAnimalDtoSchema,
+      reply: {
+        201: animalSchema,
+      }
+    } // Types are inferred from the schema
+  },
+  (req, res) => {
+    res.status(201).send({ id: 1, name: req.body.name });
+
+    // Error: Property 'id' is missing in type '{ name: string; }'
+    res.status(201).send({ name: req.body.name });
+  }
+);
+```
+````
+
+<v-click>
+No need to create types manually!
+</v-click>
+
+---
+
+# Or if you use routes as plugins
+
+```ts
+import type { FastifyPluginAsyncJsonSchemaToTs } from "@fastify/type-provider-json-schema-to-ts";
+const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
+  fastify,
+  options
+) => {
+  fastify.post(
+    "/animals",
+    {
+      schema: {
+        body: createAnimalDto,
+        response: {
+          "201": animalSchema,
+        },
+      },
+    },
+    (request, reply) => {
+      reply.status(201).send({
+        id: 1,
+        name: request.body.name,
+      });
+    }
+  );
+};
+```
+
+---
+
+# OpenAPI schema
+
+https://github.com/fastify/fastify-swagger
+
+## Setup
+
+```ts
+import Fastify from 'fastify'
+
+const fastify = Fastify()
+
+// Add your schemas somewhere, before registering the swagger plugins
+fastify.addSchema(createAnimalDtoSchema)
+fastify.addSchema(animalSchema)
+
+// then
+await fastify.register(import('@fastify/swagger'))
+
+await fastify.register(import('@fastify/swagger-ui'), {
+  routePrefix: "/documentation",
+  // ...just follow the docs
+})
+```
+
+---
+
+
+# Looks good!
+
+<img src="/fastify_ui_1.png" class="max-h-[400px]" />
+
+---
+
+# Really?
+
+```json {*|27-39|48-59}{maxHeight:'350px'}
+{
+  "openapi": "3.0.3",
+  "info": {
+    "version": "9.5.1",
+    "title": "@fastify/swagger"
+  },
+  "components": {
+    "schemas": {
+      "def-0": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "The id of the animal"
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Animal"
+      },
+      "def-1": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateAnimalDto"
+      }
+    }
+  },
+  "paths": {
+    "/animals": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the animal"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number",
+                      "description": "The id of the animal"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the animal"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+<v-clicks at="0">
+
+What is `def-1`?
+
+Why isn't it referenced?
+
+</v-clicks>
+
+---
+
+# What we want
+
+It would be better if we could reference the schemas by name, while keeping the type inference
+
+<div class="grid grid-cols-2 gap-4">
+
+````md magic-move {at:1}
+```json
+  "components": {
+    "schemas": {
+      "def-1": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateAnimalDto"
+      }
+    }
+  },
+```
+```json {3}
+  "components": {
+    "schemas": {
+      "CreateAnimalDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateAnimalDto"
+      }
+    }
+  },
+```
+
+````
+
+````md magic-move {at:1}
+```json
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The name of the animal"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    "required": true
+  },
+```
+```json {5}
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "$ref": "#/components/schemas/CreateAnimalDto"
+        }
+      }
+    },
+    "required": true
+  },
+```
+````
+
+</div>
+
+<v-click at="2">
+
+TS files should be unchanged!
+
+</v-click>
+
+---
+
+# Last secret sauce
+
+Fact: we can refer to schemas by `$id`
+
+```ts
+  fastify.post(
+    "/animals",
+    {
+      schema: {
+        body: { $ref: "CreateAnimalDto" },
+      },
+    },
+    // ...handler
+  )
+```
+
+<v-click>
+
+But this will lose type inference
+
+</v-click>
+
+---
+
+# Let `@fastify/swagger` transform the schema
+
+https://github.com/fastify/fastify-swagger?tab=readme-ov-file#managing-your-refs
+
+https://github.com/fastify/fastify-swagger?tab=readme-ov-file#transform
+
+```ts {7,9-14|22-30|2-5}{maxHeight:'350px'}
+import type { JSONSchema } from "json-schema-to-ts";
+function refFromSchema(schema: Exclude<JSONSchema, boolean>) {
+  if (schema?.$id) return { $ref: schema.$id };
+  return schema;
+}
+
+await fastify.register(import("@fastify/swagger"), {
+  openapi: {},
+  refResolver: {
+    buildLocalReference: (json, baseUri, fragment, i) => {
+      // Solve the def-1 problem
+      return `${json.$id || baseUri.path}`;
+    },
+  },
+  transform: ({ schema, url }) => {
+    if (!schema) {
+      return {
+        schema,
+        url,
+      };
+    }
+    if (schema.response) {
+      Object.keys(schema.response).forEach((key) => {
+        schema.response[key] = refFromSchema(schema.response[key]);
+      });
+    }
+    schema.body = refFromSchema(schema.body);
+    schema.querystring = refFromSchema(schema.querystring);
+    schema.headers = refFromSchema(schema.headers);
+    schema.params = refFromSchema(schema.params);
+
+    return {
+      schema,
+      url,
+    };
+  },
+
+});
+```
+
+---
+
+
+# Final result
+
+```json {*|9-25|26-37|43-51|52-63}{maxHeight:'400px'}
+{
+  "openapi": "3.0.3",
+  "info": {
+    "version": "9.5.1",
+    "title": "@fastify/swagger"
+  },
+  "components": {
+    "schemas": {
+      "Animal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "The id of the animal"
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CreateAnimalDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the animal"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/animals": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnimalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Animal"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+# React integration
+
+https://orval.dev/
+
