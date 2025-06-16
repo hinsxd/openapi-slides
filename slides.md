@@ -27,29 +27,48 @@ lineNumbers: true
 
 ## End-to-end-to-end type-safety for API
 
+
+---
+layout: intro
+---
+
+# Outline
+
+<v-clicks depth="2">
+
+- Why Schema?
+- OpenAPI
+- Backends
+  - NestJS
+  - Fastify
+- Frontend
+  - React with Orval
+
+</v-clicks>
+
 ---
 
 # Why Schema?
 
 ```js
-function add2(a, b) {
+function add1(a, b) {
   return a + b;
 }
-add2(1, 2); // 3
-add2(1, "2"); // '12'
-add2(41, true); // 42
+add1(1, 2); // 3
+add1(1, "2"); // '12'
+add1(41, true); // 42
 
 ```
 
 <v-click>
 
 ```ts twoslash
-function add1(a: number, b: number) {
+function add2(a: number, b: number) {
   return a + b;
 }
 
-add1(1, 2);
-add1(1, "2");
+add2(1, 2);
+add2(1, "2");
 ```
 
 </v-click>
@@ -1233,4 +1252,556 @@ await fastify.register(import("@fastify/swagger"), {
 # React integration
 
 https://orval.dev/
+
+`orval.config.ts`
+```ts {*|5|7|8|9|10|11}{maxHeight:'300px'}
+import { defineConfig } from "orval";
+
+export default defineConfig({
+  api: {
+    input: "http://localhost:4000/api-json",
+    output: {
+      workspace: "./src/api", // Base directory for the generated files
+      target: "generated/index.ts", // Main file
+      schemas: "generated/schemas", // Schemas directory
+      client: "react-query", // Client library
+      mode: "tags-split", // Split by tags
+      clean: true,
+      override: {
+        mutator: {
+          path: "./fetcher.ts",
+          name: "fetcher",
+        },
+      },
+    },
+  },
+});
+```
+
+
+<v-click>
+
+Run `npx orval` to do the magic
+
+</v-click>
+
+---
+
+
+# Fetcher
+
+````md magic-move
+```ts
+import Axios, { type AxiosRequestConfig } from "axios";
+
+export const AXIOS_INSTANCE = Axios.create({ baseURL: process.env.VITE_API_URL });
+
+export const fetcher = async <T>(config: AxiosRequestConfig, options?: AxiosRequestConfig): Promise<T> => {
+  const source = Axios.CancelToken.source();
+
+  const promise = AXIOS_INSTANCE({
+    ...config,
+    ...options,
+    cancelToken: source.token,
+  }).then(({ data }) => data);
+
+  (promise as any).cancel = () => {
+    source.cancel("Query was cancelled");
+  };
+
+  return promise;
+};
+
+```
+
+```ts {8-10,15}
+import Axios, { type AxiosRequestConfig } from "axios";
+
+export const AXIOS_INSTANCE = Axios.create({ baseURL: process.env.VITE_API_URL });
+
+export const fetcher = async <T>(config: AxiosRequestConfig, options?: AxiosRequestConfig): Promise<T> => {
+  const source = Axios.CancelToken.source();
+
+  const token = await getToken();
+  const headers = new Headers()
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const promise = AXIOS_INSTANCE({
+    ...config,
+    ...options,
+    headers: { ...options?.headers, ...headers },
+    cancelToken: source.token,
+  }).then(({ data }) => data);
+
+  (promise as any).cancel = () => {
+    source.cancel("Query was cancelled");
+  };
+
+  return promise;
+};
+
+```
+
+
+````
+
+---
+
+# Generated code
+
+```ts {*|1-13|241-257|123-125|141-150|153-171|220-240}{maxHeight:'400px'}
+/**
+ * @summary Get all animals
+ */
+export const animalControllerFindAll = (
+  options?: SecondParameter<typeof fetcher>,
+  signal?: AbortSignal
+) => {
+  return fetcher<Animal[]>({ url: `/animal`, method: "GET", signal }, options);
+};
+
+export const getAnimalControllerFindAllQueryKey = () => {
+  return [`/animal`] as const;
+};
+
+export const getAnimalControllerFindAllQueryOptions = <
+  TData = Awaited<ReturnType<typeof animalControllerFindAll>>,
+  TError = unknown
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof animalControllerFindAll>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof fetcher>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAnimalControllerFindAllQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof animalControllerFindAll>>
+  > = ({ signal }) => animalControllerFindAll(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof animalControllerFindAll>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type AnimalControllerFindAllQueryResult = NonNullable<
+  Awaited<ReturnType<typeof animalControllerFindAll>>
+>;
+export type AnimalControllerFindAllQueryError = unknown;
+
+export function useAnimalControllerFindAll<
+  TData = Awaited<ReturnType<typeof animalControllerFindAll>>,
+  TError = unknown
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindAll>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof animalControllerFindAll>>,
+          TError,
+          Awaited<ReturnType<typeof animalControllerFindAll>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAnimalControllerFindAll<
+  TData = Awaited<ReturnType<typeof animalControllerFindAll>>,
+  TError = unknown
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindAll>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof animalControllerFindAll>>,
+          TError,
+          Awaited<ReturnType<typeof animalControllerFindAll>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAnimalControllerFindAll<
+  TData = Awaited<ReturnType<typeof animalControllerFindAll>>,
+  TError = unknown
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindAll>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get all animals
+ */
+
+export function useAnimalControllerFindAll<
+  TData = Awaited<ReturnType<typeof animalControllerFindAll>>,
+  TError = unknown
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindAll>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getAnimalControllerFindAllQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary Create an animal
+ */
+export const animalControllerCreate = (
+  createAnimalDto: CreateAnimalDto,
+  options?: SecondParameter<typeof fetcher>,
+  signal?: AbortSignal
+) => {
+  return fetcher<Animal>(
+    {
+      url: `/animal`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: createAnimalDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getAnimalControllerCreateMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof animalControllerCreate>>,
+    TError,
+    { data: CreateAnimalDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof fetcher>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof animalControllerCreate>>,
+  TError,
+  { data: CreateAnimalDto },
+  TContext
+> => {
+  const mutationKey = ["animalControllerCreate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof animalControllerCreate>>,
+    { data: CreateAnimalDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return animalControllerCreate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnimalControllerCreateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof animalControllerCreate>>
+>;
+export type AnimalControllerCreateMutationBody = CreateAnimalDto;
+export type AnimalControllerCreateMutationError = unknown;
+
+/**
+ * @summary Create an animal
+ */
+export const useAnimalControllerCreate = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof animalControllerCreate>>,
+      TError,
+      { data: CreateAnimalDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof animalControllerCreate>>,
+  TError,
+  { data: CreateAnimalDto },
+  TContext
+> => {
+  const mutationOptions = getAnimalControllerCreateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Get an animal by id
+ */
+export const animalControllerFindOneById = (
+  id: number,
+  options?: SecondParameter<typeof fetcher>,
+  signal?: AbortSignal
+) => {
+  return fetcher<Animal>(
+    { url: `/animal/${id}`, method: "GET", signal },
+    options
+  );
+};
+
+export const getAnimalControllerFindOneByIdQueryKey = (id: number) => {
+  return [`/animal/${id}`] as const;
+};
+
+export const getAnimalControllerFindOneByIdQueryOptions = <
+  TData = Awaited<ReturnType<typeof animalControllerFindOneById>>,
+  TError = unknown
+>(
+  id: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindOneById>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAnimalControllerFindOneByIdQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof animalControllerFindOneById>>
+  > = ({ signal }) => animalControllerFindOneById(id, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof animalControllerFindOneById>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type AnimalControllerFindOneByIdQueryResult = NonNullable<
+  Awaited<ReturnType<typeof animalControllerFindOneById>>
+>;
+export type AnimalControllerFindOneByIdQueryError = unknown;
+
+export function useAnimalControllerFindOneById<
+  TData = Awaited<ReturnType<typeof animalControllerFindOneById>>,
+  TError = unknown
+>(
+  id: number,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindOneById>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof animalControllerFindOneById>>,
+          TError,
+          Awaited<ReturnType<typeof animalControllerFindOneById>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAnimalControllerFindOneById<
+  TData = Awaited<ReturnType<typeof animalControllerFindOneById>>,
+  TError = unknown
+>(
+  id: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindOneById>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof animalControllerFindOneById>>,
+          TError,
+          Awaited<ReturnType<typeof animalControllerFindOneById>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAnimalControllerFindOneById<
+  TData = Awaited<ReturnType<typeof animalControllerFindOneById>>,
+  TError = unknown
+>(
+  id: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindOneById>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get an animal by id
+ */
+
+export function useAnimalControllerFindOneById<
+  TData = Awaited<ReturnType<typeof animalControllerFindOneById>>,
+  TError = unknown
+>(
+  id: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof animalControllerFindOneById>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getAnimalControllerFindOneByIdQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+```
+
+--- 
+
+# Let's use it
+
+```tsx {*|2-3|4,15|5-11|8}{maxHeight:'350px'}
+const queryClient = useQueryClient();
+const { data } = useAnimalControllerFindOneById(2);
+//      ^? const data: Animal | undefined
+const { mutate } = useAnimalControllerCreate({
+  mutation: {
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: getAnimalControllerFindAllQueryKey(),
+      });
+    },
+  },
+});
+
+const handleCreate = () => {
+  mutate({ data: { name: "giraffe" } });
+};
+
+
+
+```
+
+---
+layout: end
+---
+
+# Thank you!
+
+
+<v-clicks>
+
+Special thanks to:
+
+- Rex
+- CJ
+
+Slide made with [Slidev](https://sli.dev)
+
+</v-clicks>
+
 
