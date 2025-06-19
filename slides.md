@@ -25,7 +25,7 @@ lineNumbers: true
 
 # Fullstack OpenAPI
 
-## End-to-end-to-end type-safety for API
+## End-to-end type-safety for API
 
 
 ---
@@ -877,18 +877,20 @@ import Fastify from 'fastify'
 
 const fastify = Fastify()
 
-// Add your schemas somewhere, before registering the swagger plugins
-fastify.addSchema(createAnimalDtoSchema)
-fastify.addSchema(animalSchema)
 
-// then
 await fastify.register(import('@fastify/swagger'))
 
 await fastify.register(import('@fastify/swagger-ui'), {
   routePrefix: "/documentation",
   // ...just follow the docs
 })
+
+// Then add your schema
+fastify.addSchema(createAnimalDtoSchema)
+fastify.addSchema(animalSchema)
 ```
+
+
 
 ---
 
@@ -1268,6 +1270,10 @@ export default defineConfig({
       mode: "tags-split", // Split by tags
       clean: true,
       override: {
+        query: {
+          // version: 3 
+          version: 5
+        },
         mutator: {
           path: "./fetcher.ts",
           name: "fetcher",
